@@ -1,0 +1,58 @@
+# PR-Agent GitHub Actions Workflow
+# ─────────────────────────────────────────────────────────────────────────────
+# Copy this file to YOUR repository at:
+#   .github/workflows/pr_agent.yml
+#
+# Then add these secrets in your repo's Settings → Secrets and variables → Actions:
+#   GEMINI_API_KEY   — your Google AI Studio API key
+#   GITHUB_TOKEN     — already injected automatically by GitHub, no action needed
+#
+# The workflow runs on:
+#   • Every new PR opened, reopened, or marked ready-for-review
+#   • Every comment on a PR that starts with /review, /describe, /improve, /ask
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: PR-Agent
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  pr_agent_job:
+    # Only run on actual pull requests, not on issue comments for regular issues
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       startsWith(github.event.comment.body, '/'))
+    runs-on: ubuntu-latest
+    name: Run PR-Agent
+    steps:
+      - name: PR-Agent
+        uses: Codium-ai/pr-agent@main
+        env:
+          # ── AI provider ────────────────────────────────────────────────────
+          # Google AI Studio key — stored as a GitHub secret
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+          # ── GitHub auth ────────────────────────────────────────────────────
+          # GITHUB_TOKEN is injected automatically — no secret needed
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # ── Model configuration ────────────────────────────────────────────
+          # Override the default model to use Gemini
+          CONFIG.MODEL: "gemini/gemini-3.5-flash"
+          CONFIG.FALLBACK_MODELS: '["gemini/gemini-3.1-flash-lite"]'
+
+          # ── Auto-run commands on new PRs ───────────────────────────────────
+          GITHUB_ACTION_CONFIG.AUTO_DESCRIBE: "true"
+          GITHUB_ACTION_CONFIG.AUTO_REVIEW: "true"
+          GITHUB_ACTION_CONFIG.AUTO_IMPROVE: "true"

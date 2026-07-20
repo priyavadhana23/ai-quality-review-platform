@@ -1,0 +1,44 @@
+# docker-compose.override.yml — Development overrides
+#
+# Applied automatically by `docker compose up` when this file is present.
+# Switches nginx to HTTP-only (no SSL required) for local development.
+# Exposes backend, redis, postgres, prometheus, and grafana ports directly.
+#
+# To use HTTPS locally:
+#   1. Run: bash nginx/generate-certs.sh
+#   2. Remove this file (or rename it away)
+#   3. docker compose -f docker-compose.yml up --build
+
+services:
+  nginx:
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - nginx_logs:/var/log/nginx
+    # Dev: HTTP only, no SSL mount
+    ports:
+      - "80:80"
+
+  # Expose backend port directly in dev for debugging / curl
+  backend:
+    ports:
+      - "8000:8000"
+    environment:
+      APP_RELOAD: "false"
+      APP_LOG_LEVEL: DEBUG
+
+  # Expose Redis port in dev for direct inspection
+  redis:
+    ports:
+      - "6379:6379"
+
+  # Expose PostgreSQL port in dev for direct connection
+  postgres:
+    ports:
+      - "5432:5432"
+
+  # Prometheus and Grafana already expose ports in docker-compose.yml;
+  # override scrape target to use the dev backend URL if needed.
+  prometheus:
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus

@@ -1,0 +1,49 @@
+# Production configuration overlay for Railway deployment
+# ─────────────────────────────────────────────────────────────────────────────
+# This file is baked into the Docker image at build time.
+# It overrides ONLY the keys that differ from the development defaults in
+# configuration.toml — everything else is inherited from that file.
+#
+# Secrets (API keys, private key, webhook secret) are NEVER placed here.
+# They arrive at runtime as Railway environment variables and are picked up
+# by Dynaconf's env_loader (last in the chain → highest precedence).
+# ─────────────────────────────────────────────────────────────────────────────
+
+[config]
+# Gemini via Google AI Studio — key injected at runtime via
+# GOOGLE_AI_STUDIO__GEMINI_API_KEY environment variable.
+model = "gemini/gemini-3.5-flash"
+fallback_models = ["gemini/gemini-3.1-flash-lite"]
+
+# Structured JSON logging suits Railway's log aggregator.
+log_level = "INFO"
+
+# Tighten the token budget for the free-tier Gemini key.
+# The models support 1 M tokens but the free tier throttles aggressively;
+# keeping requests small reduces per-minute token consumption.
+max_model_tokens = 32000
+
+# Webhooks arrive through Railway's proxy — respect X-Forwarded-For.
+# (Gunicorn is already started with --forwarded-allow-ips '*')
+
+[github]
+# Deployment type must be "app" for a GitHub App installation.
+# GITHUB__APP_ID, GITHUB__PRIVATE_KEY, and GITHUB__WEBHOOK_SECRET
+# are injected via Railway environment variables at runtime.
+deployment_type = "app"
+
+# The bot username shown in PR comments (GitHub App slug + "[bot]").
+# Set this to your actual GitHub App slug once you create the App.
+# Can also be overridden at runtime via GITHUB__BOT_USER env var.
+bot_user = "pr-agent[bot]"
+
+[github_app]
+# Auto-run these commands when a new PR is opened or reopened.
+pr_commands = [
+    "/describe --pr_description.final_update_message=false",
+    "/review",
+    "/improve",
+]
+
+# Do not run commands again on every new commit push — reduces quota usage.
+handle_push_trigger = false

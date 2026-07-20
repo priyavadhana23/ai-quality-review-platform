@@ -1,0 +1,74 @@
+# ── Backend Dockerfile ────────────────────────────────────────────────────────
+# Multi-stage build: builder installs deps, final image is lean.
+# Python 3.12 matches pyproject.toml requires-python = ">=3.12"
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: dependency builder ───────────────────────────────────────────────
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+# System deps needed by some Python packages (cryptography, Pillow, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files first for layer-cache efficiency
+COPY requirements.txt requirements-prod.txt* ./
+
+# Install into a local prefix so we can copy to the final stage
+RUN pip install --upgrade pip wheel \
+ && pip install --prefix=/install -r requirements.txt \
+ && if [ -f requirements-prod.txt ]; then pip install --prefix=/install -r requirements-prod.txt; fi
+
+
+# ── Stage 2: runtime image ────────────────────────────────────────────────────
+FROM python:3.12-slim AS runtime
+
+# Labels
+LABEL maintainer="AI Quality Review Platform"
+LABEL description="FastAPI backend — AI Quality Review Platform"
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Install runtime system libs (libpq for psycopg2)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy installed Python packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy application source
+COPY . .
+
+# Create directories for data and logs
+RUN mkdir -p /app/data /app/logs \
+ && chown -R appuser:appuser /app
+
+USER appuser
+
+# Health check — calls the /health endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -fsS http://localhost:${APP_PORT:-8000}/health || exit 1
+
+EXPOSE 8000
+
+# Use gunicorn with uvicorn workers in production
+CMD ["sh", "-c", \
+    "gunicorn app.main:app \
+     --worker-class uvicorn.workers.UvicornWorker \
+     --workers ${GUNICORN_WORKERS:-2} \
+     --bind 0.0.0.0:${APP_PORT:-8000} \
+     --timeout 300 \
+     --keep-alive 5 \
+     --access-logfile - \
+     --error-logfile - \
+     --log-level ${APP_LOG_LEVEL:-info}"]

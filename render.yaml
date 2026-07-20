@@ -1,0 +1,55 @@
+# Render deployment configuration
+# Docs: https://render.com/docs/yaml-spec
+
+services:
+  - type: web
+    name: qrp-backend
+    env: python
+    buildCommand: pip install -r requirements.txt -r requirements-prod.txt
+    startCommand: >
+      gunicorn app.main:app
+      --worker-class uvicorn.workers.UvicornWorker
+      --workers 2
+      --bind 0.0.0.0:$PORT
+      --timeout 300
+      --log-level info
+    envVars:
+      - key: APP_DATABASE_URL
+        fromDatabase:
+          name: qrp-postgres
+          property: connectionString
+      - key: APP_REDIS_URL
+        value: redis://localhost:6379/0
+      - key: APP_JWT_SECRET_KEY
+        generateValue: true
+      - key: APP_GITHUB_CLIENT_ID
+        sync: false
+      - key: APP_GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_AI_STUDIO__GEMINI_API_KEY
+        sync: false
+      - key: PYTHONPATH
+        value: .
+    healthCheckPath: /health
+    autoDeploy: true
+
+  - type: worker
+    name: qrp-celery-worker
+    env: python
+    buildCommand: pip install -r requirements.txt -r requirements-prod.txt
+    startCommand: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+    envVars:
+      - key: APP_DATABASE_URL
+        fromDatabase:
+          name: qrp-postgres
+          property: connectionString
+      - key: APP_REDIS_URL
+        value: redis://localhost:6379/0
+      - key: PYTHONPATH
+        value: .
+
+databases:
+  - name: qrp-postgres
+    databaseName: qrp
+    user: qrp
+    plan: starter

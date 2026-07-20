@@ -1,0 +1,19 @@
+# Railway deployment configuration
+# https://docs.railway.app/reference/config-as-code
+#
+# Railway reads this file automatically when you connect the repo.
+# All secret values (API keys, private key) must be set in the Railway
+# dashboard under Variables — they are NEVER stored here.
+
+[build]
+# Tell Railway to use our production Dockerfile instead of auto-detecting
+dockerfilePath = "Dockerfile.railway"
+
+[deploy]
+# Health-check: GET / returns {"status":"ok"} from the github_app router
+healthcheckPath = "/"
+healthcheckTimeout = 30        # seconds Railway waits for 200 OK on first deploy
+
+# Restart the container automatically on crash
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

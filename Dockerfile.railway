@@ -1,0 +1,55 @@
+# Production Dockerfile for Railway deployment
+# Target: GitHub App webhook server backed by Google Gemini
+#
+# Build command (Railway does this automatically):
+#   docker build -f Dockerfile.railway -t pr-agent-railway .
+#
+# The server binds to $PORT (injected by Railway at runtime).
+# All secrets are passed as Railway environment variables — no .secrets.toml
+# is baked into this image.
+
+FROM python:3.12.13-slim AS base
+
+# System deps: git (needed by GitPython for diff extraction), curl (healthcheck)
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y git curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies first (layer-cached until requirements change)
+COPY pyproject.toml requirements.txt ./
+COPY docs ./docs
+RUN pip install --no-cache-dir . \
+    && rm pyproject.toml requirements.txt
+
+ENV PYTHONPATH=/app
+
+# ── Application source ────────────────────────────────────────────────────────
+COPY pr_agent ./pr_agent
+
+# Create the settings_prod directory that config_loader.py expects.
+# Secrets are injected via env vars at runtime — this file stays empty.
+RUN mkdir -p /app/pr_agent/settings_prod \
+    && touch /app/pr_agent/settings_prod/.secrets.toml
+
+# ── Runtime ───────────────────────────────────────────────────────────────────
+# Railway injects $PORT at runtime (typically 8080).
+# We pass it to gunicorn via --bind so it honours the platform-assigned port.
+# --workers 2  keeps memory within Railway's free-tier 512 MB limit.
+# --timeout 120 matches PR-Agent's ai_timeout default.
+# --forwarded-allow-ips '*' is required because Railway sits behind a proxy.
+
+EXPOSE 8080
+
+CMD ["sh", "-c", \
+     "exec python -m gunicorn \
+        -k uvicorn.workers.UvicornWorker \
+        --bind 0.0.0.0:${PORT:-8080} \
+        --workers ${GUNICORN_WORKERS:-2} \
+        --timeout 120 \
+        --forwarded-allow-ips '*' \
+        --access-logfile - \
+        --error-logfile - \
+        pr_agent.servers.github_app:app"]

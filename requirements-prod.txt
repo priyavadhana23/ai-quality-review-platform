@@ -1,0 +1,35 @@
+# Production-only dependencies (installed in addition to requirements.txt)
+# These are NOT needed for local SQLite development or unit tests.
+
+# PostgreSQL async driver
+asyncpg==0.30.0
+
+# SQLAlchemy async ORM (used by postgres.py adapter)
+sqlalchemy[asyncio]==2.0.41
+
+# Database migrations
+alembic==1.16.4
+
+# Redis async client
+redis[hiredis]==5.3.0
+
+# Celery with Redis broker
+celery[redis]==5.5.2
+
+# Rate limiting
+slowapi==0.1.9
+
+# Prometheus metrics
+prometheus-fastapi-instrumentator==7.1.0
+
+# Structured logging
+structlog==25.3.0
+
+# WebSocket support (already in fastapi/starlette, but pin explicitly)
+websockets==15.0.1
+
+# HTTP client for webhook verification
+httpx==0.28.1
+
+# Security headers middleware
+secure==1.0.1
