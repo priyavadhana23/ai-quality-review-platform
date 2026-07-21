@@ -45,7 +45,7 @@ export const reviewApi = {
 export const authApi = {
   /** Redirect the browser to GitHub OAuth (full-page navigation). */
   initiateLogin: (): void => {
-    window.location.href = `${apiClient.defaults.baseURL ?? ""}/auth/login`;
+    window.location.href = "/auth/login";
   },
 
   /** Exchange a refresh token for a new access token. */
