@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import secrets
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.auth.oauth import build_github_authorize_url
