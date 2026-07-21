@@ -1,5 +1,5 @@
 {
-  "buildCommand": "if [ -d \"frontend\" ]; then cd frontend && npm install && npm run build; else npm run build; fi",
+  "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
