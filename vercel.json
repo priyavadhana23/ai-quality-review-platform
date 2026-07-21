@@ -3,8 +3,16 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
-      "source": "/auth/:path*",
-      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/auth/:path*"
+      "source": "/auth/login",
+      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/auth/login"
+    },
+    {
+      "source": "/auth/refresh",
+      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/auth/refresh"
+    },
+    {
+      "source": "/auth/logout",
+      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/auth/logout"
     },
     {
       "source": "/users/:path*",
