@@ -13,7 +13,7 @@ from typing import AsyncGenerator
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.config import get_app_settings
 from app.core.exceptions import PRAgentAPIError
