@@ -75,6 +75,7 @@ _REQUIRED_PROD_VARS = [
     "APP_JWT_SECRET_KEY",
     "APP_GITHUB_CLIENT_ID",
     "APP_GITHUB_CLIENT_SECRET",
+    "APP_REDIS_URL",
 ]
 
 _INSECURE_DEFAULTS = {
@@ -86,6 +87,12 @@ def validate_environment() -> list[str]:
     """
     Check that critical environment variables are set and not left at insecure
     defaults.  Returns a list of warnings (non-fatal).
+
+    Performed checks:
+      - Required production vars are present
+      - JWT secret is not using the insecure default
+      - CORS origins is not a wildcard (*) in production — logs a warning
+        and, when APP_CORS_STRICT=true, raises RuntimeError to abort startup
     """
     warnings: list[str] = []
     is_prod = os.environ.get("APP_ENV", "development").lower() == "production"
@@ -98,6 +105,20 @@ def validate_environment() -> list[str]:
     for var, bad_value in _INSECURE_DEFAULTS.items():
         if os.environ.get(var) == bad_value:
             warnings.append(f"SECURITY: {var} is using the insecure default value")
+
+    # Wildcard CORS check — dangerous in production because any origin can
+    # make credentialed requests against the API.
+    cors_origins = os.environ.get("APP_CORS_ORIGINS", "*")
+    if is_prod and cors_origins.strip() == "*":
+        msg = (
+            "SECURITY: APP_CORS_ORIGINS is set to '*' in production. "
+            "Set it to your specific frontend domain(s), "
+            "e.g. APP_CORS_ORIGINS=https://app.example.com"
+        )
+        warnings.append(msg)
+        strict = os.environ.get("APP_CORS_STRICT", "false").lower() == "true"
+        if strict:
+            raise RuntimeError(msg)
 
     for w in warnings:
         _log.warning(w)

@@ -7,6 +7,10 @@ routed through the service layer.
 """
 from __future__ import annotations
 
+import os
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -32,14 +36,51 @@ from app.routers.history import router as history_router
 from app.routers.profile import router as profile_router
 from app.routers.reports import router as reports_router
 from app.routers.security_scanner import router as security_scanner_router
-from app.routers.test_generator import router as test_generator_router
 from app.routers.tasks import router as tasks_router
+from app.routers.test_generator import router as test_generator_router
 from app.routers.webhooks import router as webhooks_router
 from app.routers.workspace import router as workspace_router
 from app.routers.ws import router as ws_router
 
 configure_logging()
 settings = get_app_settings()
+
+
+# ── Lifespan: startup and graceful shutdown ───────────────────────────────────
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    """Manage application startup and graceful shutdown."""
+    logger = get_logger()
+
+    # ── Startup ──────────────────────────────────────────────────────────
+    await init_db()
+    validate_environment()
+    logger.info("Database initialised")
+
+    yield  # application is serving requests
+
+    # ── Shutdown ─────────────────────────────────────────────────────────
+    logger.info("Shutting down — releasing resources")
+
+    # 1. PostgreSQL connection pool
+    if os.environ.get("APP_DATABASE_URL", "").startswith("postgresql"):
+        try:
+            from app.db.postgres import _get_engine
+            await _get_engine().dispose()
+            logger.info("PostgreSQL connection pool closed")
+        except Exception as exc:
+            logger.warning(f"PostgreSQL shutdown error: {exc}")
+
+    # 2. Redis async client
+    try:
+        from app.cache.redis_client import close_redis
+        await close_redis()
+        logger.info("Redis client closed")
+    except Exception as exc:
+        logger.warning(f"Redis shutdown error: {exc}")
+
+    logger.info("Shutdown complete")
 
 
 def create_app() -> FastAPI:
@@ -51,14 +92,8 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
+        lifespan=_lifespan,
     )
-
-    # ── Startup: initialise the database schema ────────────────────────────
-    @application.on_event("startup")
-    async def _startup() -> None:
-        await init_db()
-        validate_environment()
-        get_logger().info("Database initialised")
 
     # ── Middleware ─────────────────────────────────────────────────────────
     add_cors_middleware(application)

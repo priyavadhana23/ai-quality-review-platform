@@ -2,9 +2,10 @@
 Redis cache layer.
 
 Provides a thin async wrapper around redis-py with:
-  - Auto-connection from APP_REDIS_URL env var
+  - Auto-connection from APP_REDIS_URL env var (read lazily, not at import time)
   - get / set / delete / invalidate_prefix helpers
   - cached() decorator for async functions
+  - close_redis() for graceful shutdown
   - Graceful fallback (no-op) when Redis is unavailable
 
 Usage
@@ -19,6 +20,10 @@ Usage
     await cache.set("key", value, ttl=60)
     val = await cache.get("key")
     await invalidate("analytics:*")
+
+    # Graceful shutdown (call from lifespan)
+    from app.cache.redis_client import close_redis
+    await close_redis()
 """
 from __future__ import annotations
 
@@ -30,20 +35,25 @@ from typing import Any, Callable
 
 _log = logging.getLogger(__name__)
 
-_REDIS_URL = os.environ.get("APP_REDIS_URL", "")
 _client: Any = None  # redis.asyncio.Redis | None
+
+
+def _get_redis_url() -> str:
+    """Read the Redis URL from the environment lazily (not at import time)."""
+    return os.environ.get("APP_REDIS_URL", "")
 
 
 def _get_client() -> Any:
     global _client
     if _client is not None:
         return _client
-    if not _REDIS_URL:
+    redis_url = _get_redis_url()
+    if not redis_url:
         return None
     try:
         import redis.asyncio as aioredis
         _client = aioredis.from_url(
-            _REDIS_URL,
+            redis_url,
             encoding="utf-8",
             decode_responses=True,
             socket_connect_timeout=2,
@@ -53,6 +63,20 @@ def _get_client() -> Any:
         _log.warning(f"Redis unavailable — caching disabled: {exc}")
         _client = None
     return _client
+
+
+async def close_redis() -> None:
+    """Close the Redis connection pool gracefully. Called from lifespan shutdown."""
+    global _client
+    if _client is None:
+        return
+    try:
+        await _client.aclose()
+        _log.info("Redis connection pool closed")
+    except Exception as exc:
+        _log.debug(f"Redis close error: {exc}")
+    finally:
+        _client = None
 
 
 class CacheClient:
@@ -141,8 +165,11 @@ def cached(key_template: str, ttl: int = 300) -> Callable:
             result = await fn(*args, **kwargs)
             if result is not None:
                 try:
-                    await cache.set(key, result if not hasattr(result, "model_dump")
-                                    else result.model_dump(), ttl=ttl)
+                    await cache.set(
+                        key,
+                        result if not hasattr(result, "model_dump") else result.model_dump(),
+                        ttl=ttl,
+                    )
                 except Exception:
                     pass
             return result

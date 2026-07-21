@@ -20,9 +20,29 @@ export default defineConfig({
         target: "http://localhost:8000",
         changeOrigin: true,
       },
+      "/auth/login": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/auth/refresh": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/auth/logout": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/users": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
       "/health": {
         target: "http://localhost:8000",
         changeOrigin: true,
+      },
+      "/ws": {
+        target: "ws://localhost:8000",
+        ws: true,
       },
     },
   },

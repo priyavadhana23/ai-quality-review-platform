@@ -50,3 +50,27 @@ async def github_oauth_login(code: str) -> tuple[UserResponse, str, str]:
     )
 
     return user, access_token, raw_refresh
+
+
+async def dev_mock_login() -> tuple[UserResponse, str, str]:
+    """
+    Perform a mock user login for local development when APP_GITHUB_CLIENT_ID is not configured.
+    """
+    db_row = await UserRepository.upsert(
+        github_id=999999,
+        username="dev_user",
+        email="dev@localhost",
+        avatar_url="https://github.com/identicons/dev.png",
+    )
+    user = UserResponse.from_db(db_row)
+
+    access_token = create_access_token(user.id, user.username, user.role)
+    raw_refresh, hashed_refresh, expires_at = create_refresh_token()
+    await RefreshTokenRepository.save(
+        user_id=user.id,
+        token_hash=hashed_refresh,
+        expires_at=expires_at.isoformat(),
+    )
+
+    return user, access_token, raw_refresh
+

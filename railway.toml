@@ -1,19 +1,37 @@
-# Railway deployment configuration
+# Railway deployment configuration — AI Quality Review Platform
 # https://docs.railway.app/reference/config-as-code
 #
-# Railway reads this file automatically when you connect the repo.
-# All secret values (API keys, private key) must be set in the Railway
-# dashboard under Variables — they are NEVER stored here.
+# This file deploys the FastAPI QRP backend (app/main.py), NOT the
+# PR-Agent GitHub App webhook server.
+#
+# Required environment variables (set in Railway dashboard → Variables):
+#   APP_DATABASE_URL           — PostgreSQL connection string (from Railway Postgres plugin)
+#   APP_REDIS_URL              — Redis connection string (from Railway Redis plugin)
+#   APP_JWT_SECRET_KEY         — Random secret: openssl rand -hex 64
+#   APP_GITHUB_CLIENT_ID       — GitHub OAuth App client ID
+#   APP_GITHUB_CLIENT_SECRET   — GitHub OAuth App client secret
+#   APP_GITHUB_CALLBACK_URL    — https://<your-railway-domain>/auth/callback
+#   APP_FRONTEND_URL           — URL of the deployed frontend
+#   APP_CORS_ORIGINS           — Same as APP_FRONTEND_URL (no trailing slash)
+#   APP_ENV                    — production
+#   GOOGLE_AI_STUDIO__GEMINI_API_KEY — Google AI Studio API key
+#   GITHUB__APP_ID             — GitHub App numeric ID
+#   GITHUB__PRIVATE_KEY        — GitHub App RSA private key (PEM, \n-escaped)
+#   GITHUB__WEBHOOK_SECRET     — Webhook HMAC secret: openssl rand -hex 32
+#   PYTHONPATH                 — .
 
 [build]
-# Tell Railway to use our production Dockerfile instead of auto-detecting
-dockerfilePath = "Dockerfile.railway"
+# Use the multi-stage production Dockerfile for the FastAPI backend.
+# This installs both requirements.txt and requirements-prod.txt,
+# runs as a non-root user, and exposes port 8000.
+dockerfilePath = "Dockerfile.backend"
 
 [deploy]
-# Health-check: GET / returns {"status":"ok"} from the github_app router
-healthcheckPath = "/"
-healthcheckTimeout = 30        # seconds Railway waits for 200 OK on first deploy
+# Railway injects $PORT at runtime; Dockerfile.backend honours it.
+# The FastAPI app exposes GET /health which returns {"status":"ok"}.
+healthcheckPath = "/health"
+healthcheckTimeout = 60
 
-# Restart the container automatically on crash
+# Restart automatically on crash, up to 10 times.
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+restartPolicyMaxRetries = 10

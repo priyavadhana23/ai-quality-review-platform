@@ -1,5 +1,14 @@
 # Render deployment configuration
 # Docs: https://render.com/docs/yaml-spec
+#
+# Redis: Render does not provide a free managed Redis instance in the same
+# region automatically.  You must either:
+#   a) Create a Redis instance in the Render dashboard and copy its
+#      "External Redis URL" into APP_REDIS_URL via the environment group, OR
+#   b) Use a third-party Redis provider (Upstash, Redis Cloud) and paste
+#      the connection string as APP_REDIS_URL in the service environment.
+#
+# APP_DATABASE_URL is wired automatically from the managed Postgres instance.
 
 services:
   - type: web
@@ -19,13 +28,21 @@ services:
           name: qrp-postgres
           property: connectionString
       - key: APP_REDIS_URL
-        value: redis://localhost:6379/0
+        sync: false            # Set to your external Redis URL in the Render dashboard
       - key: APP_JWT_SECRET_KEY
         generateValue: true
       - key: APP_GITHUB_CLIENT_ID
         sync: false
       - key: APP_GITHUB_CLIENT_SECRET
         sync: false
+      - key: APP_GITHUB_CALLBACK_URL
+        sync: false
+      - key: APP_FRONTEND_URL
+        sync: false
+      - key: APP_CORS_ORIGINS
+        sync: false            # Set to your production frontend URL, e.g. https://app.example.com
+      - key: APP_ENV
+        value: production
       - key: GOOGLE_AI_STUDIO__GEMINI_API_KEY
         sync: false
       - key: PYTHONPATH
@@ -37,14 +54,24 @@ services:
     name: qrp-celery-worker
     env: python
     buildCommand: pip install -r requirements.txt -r requirements-prod.txt
-    startCommand: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+    startCommand: >
+      celery -A app.workers.celery_app worker
+      --loglevel=info
+      --concurrency=2
+      --queues=ai_tasks,default
     envVars:
       - key: APP_DATABASE_URL
         fromDatabase:
           name: qrp-postgres
           property: connectionString
       - key: APP_REDIS_URL
-        value: redis://localhost:6379/0
+        sync: false            # Must match the same Redis instance used by qrp-backend
+      - key: APP_JWT_SECRET_KEY
+        sync: false
+      - key: GOOGLE_AI_STUDIO__GEMINI_API_KEY
+        sync: false
+      - key: APP_ENV
+        value: production
       - key: PYTHONPATH
         value: .
 

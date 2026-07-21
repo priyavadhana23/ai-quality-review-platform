@@ -22,7 +22,7 @@ from app.core.config import get_app_settings
 from app.core.logger import get_logger
 from app.schemas.auth import LogoutRequest, RefreshRequest, TokenResponse
 from app.services.auth_service import AuthError, logout, refresh_access_token
-from app.services.github_service import github_oauth_login
+from app.services.github_service import dev_mock_login, github_oauth_login
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -30,14 +30,25 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.get(
     "/login",
     summary="Initiate GitHub OAuth login",
-    description="Redirects the browser to GitHub's OAuth authorization page.",
+    description="Redirects to GitHub OAuth, or performs local dev login if GitHub App credentials are not configured.",
 )
 async def login() -> RedirectResponse:
     """
     Generate a CSRF state token and redirect the user to GitHub OAuth.
-    The state is embedded in the redirect URL; the frontend stores it and
-    verifies it when the callback fires.
+    If APP_GITHUB_CLIENT_ID is not configured, performs a local dev mock login.
     """
+    s = get_app_settings()
+    if not s.github_client_id:
+        logger = get_logger()
+        logger.info("APP_GITHUB_CLIENT_ID not set — performing local dev mock login")
+        user, access_token, raw_refresh = await dev_mock_login()
+        redirect_url = (
+            f"{s.frontend_url}/auth/callback"
+            f"?refresh_token={raw_refresh}"
+            f"#access_token={access_token}"
+        )
+        return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+
     state = secrets.token_urlsafe(32)
     authorize_url = build_github_authorize_url(state)
     return RedirectResponse(url=authorize_url, status_code=status.HTTP_302_FOUND)
