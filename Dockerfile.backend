@@ -58,24 +58,22 @@ RUN mkdir -p /app/data /app/logs /home/appuser \
 
 USER appuser
 
-# Health check — calls the /health endpoint.
-# PORT is injected by Railway at runtime; APP_PORT is the manual override;
-# 8000 is the local/Docker default.
-HEALTHCHECK --interval=10s --timeout=5s --start-period=45s --retries=10 \
-    CMD curl -fsS http://localhost:${PORT:-${APP_PORT:-8000}}/health || exit 1
+ENV PORT=8080
+EXPOSE 8080
 
-# Advertise the default port. Railway overrides this with $PORT at runtime.
-EXPOSE 8000
+# Health check — calls the /health endpoint.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=45s --retries=10 \
+    CMD curl -fsS http://localhost:${PORT:-8080}/health || exit 1
 
 # Gunicorn + UvicornWorker.
-# Bind order: Railway $PORT > manual APP_PORT > 8000 default.
+# Bind order: Railway $PORT > 8080 default matching Railway target port.
 # --forwarded-allow-ips '*' is required because Railway sits behind a proxy.
 # PYTHONPATH=. ensures app.* imports resolve from /app.
 CMD ["sh", "-c", \
     "PYTHONPATH=/app gunicorn app.main:app \
      --worker-class uvicorn.workers.UvicornWorker \
      --workers ${GUNICORN_WORKERS:-1} \
-     --bind 0.0.0.0:${PORT:-${APP_PORT:-8000}} \
+     --bind 0.0.0.0:${PORT:-8080} \
      --timeout 300 \
      --keep-alive 5 \
      --forwarded-allow-ips '*' \
