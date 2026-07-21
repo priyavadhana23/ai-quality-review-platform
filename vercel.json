@@ -3,6 +3,22 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
+      "source": "/auth/:path*",
+      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/auth/:path*"
+    },
+    {
+      "source": "/users/:path*",
+      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/users/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/health"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
