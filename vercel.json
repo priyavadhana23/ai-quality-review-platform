@@ -1,5 +1,7 @@
 {
-  "buildCommand": "if [ -d \"frontend\" ]; then cd frontend && npm install && npm run build; else npm install && npm run build; fi",
+  "framework": "vite",
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
   "rewrites": [
     {
       "source": "/auth/login",
