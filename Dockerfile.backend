@@ -32,13 +32,16 @@ FROM python:3.12-slim AS runtime
 LABEL maintainer="AI Quality Review Platform"
 LABEL description="FastAPI backend — AI Quality Review Platform"
 
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create non-root user for security with home directory
+RUN groupadd -r appuser && useradd -m -r -g appuser appuser
+ENV HOME=/home/appuser
+ENV GIT_PYTHON_REFRESH=quiet
 
-# Install runtime system libs (libpq for psycopg2)
+# Install runtime system libs (libpq for psycopg2, git for GitPython, curl for healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -49,16 +52,16 @@ COPY --from=builder /install /usr/local
 # Copy application source
 COPY . .
 
-# Create directories for data and logs
-RUN mkdir -p /app/data /app/logs \
- && chown -R appuser:appuser /app
+# Create directories for data and logs with appuser ownership
+RUN mkdir -p /app/data /app/logs /home/appuser \
+ && chown -R appuser:appuser /app /home/appuser
 
 USER appuser
 
 # Health check — calls the /health endpoint.
 # PORT is injected by Railway at runtime; APP_PORT is the manual override;
 # 8000 is the local/Docker default.
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=45s --retries=10 \
     CMD curl -fsS http://localhost:${PORT:-${APP_PORT:-8000}}/health || exit 1
 
 # Advertise the default port. Railway overrides this with $PORT at runtime.
@@ -71,7 +74,7 @@ EXPOSE 8000
 CMD ["sh", "-c", \
     "PYTHONPATH=/app gunicorn app.main:app \
      --worker-class uvicorn.workers.UvicornWorker \
-     --workers ${GUNICORN_WORKERS:-2} \
+     --workers ${GUNICORN_WORKERS:-1} \
      --bind 0.0.0.0:${PORT:-${APP_PORT:-8000}} \
      --timeout 300 \
      --keep-alive 5 \

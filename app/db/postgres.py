@@ -30,8 +30,11 @@ _SessionLocal: sessionmaker | None = None  # type: ignore[type-arg]
 def _get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
+        url = os.environ.get("APP_DATABASE_URL", "")
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         _engine = create_async_engine(
-            _DATABASE_URL,
+            url,
             echo=False,
             pool_size=10,
             max_overflow=20,

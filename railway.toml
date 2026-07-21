@@ -30,7 +30,7 @@ dockerfilePath = "Dockerfile.backend"
 # Railway injects $PORT at runtime; Dockerfile.backend honours it.
 # The FastAPI app exposes GET /health which returns {"status":"ok"}.
 healthcheckPath = "/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 300
 
 # Restart automatically on crash, up to 10 times.
 restartPolicyType = "on_failure"

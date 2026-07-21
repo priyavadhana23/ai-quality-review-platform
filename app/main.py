@@ -54,9 +54,12 @@ async def _lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger = get_logger()
 
     # ── Startup ──────────────────────────────────────────────────────────
-    await init_db()
+    try:
+        await init_db()
+        logger.info("Database initialised")
+    except Exception as exc:
+        logger.error(f"Database initialisation warning: {exc}")
     validate_environment()
-    logger.info("Database initialised")
 
     yield  # application is serving requests
 
@@ -123,6 +126,10 @@ def create_app() -> FastAPI:
     application.include_router(ws_router)
     application.include_router(webhooks_router)
     application.include_router(tasks_router)
+
+    @application.get("/", include_in_schema=False)
+    async def root():
+        return RedirectResponse(url="/docs")
 
     # ── Exception handlers ─────────────────────────────────────────────────
     @application.exception_handler(PRAgentAPIError)

@@ -33,3 +33,6 @@ httpx==0.28.1
 
 # Security headers middleware
 secure==1.0.1
+
+pydantic-settings>=2.0.0
+python-multipart>=0.0.9
