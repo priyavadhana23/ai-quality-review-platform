@@ -29,13 +29,25 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 def _get_frontend_base(request: Request) -> str:
     s = get_app_settings()
+    configured_frontend = (s.frontend_url or "http://localhost:5173").rstrip("/")
     referer = request.headers.get("referer") or request.headers.get("origin")
     if referer:
         from urllib.parse import urlparse
         parsed = urlparse(referer)
         if parsed.scheme and parsed.netloc:
-            return f"{parsed.scheme}://{parsed.netloc}"
-    return s.frontend_url
+            domain = parsed.netloc.lower()
+            # Ignore github.com or external third-party OAuth provider domains
+            if "github.com" in domain:
+                return configured_frontend
+            # Allow local development (localhost / 127.0.0.1)
+            if "localhost" in domain or "127.0.0.1" in domain:
+                return f"{parsed.scheme}://{parsed.netloc}"
+            # Check matching domain with configured frontend URL
+            configured_parsed = urlparse(configured_frontend)
+            if configured_parsed.netloc and domain == configured_parsed.netloc.lower():
+                return f"{parsed.scheme}://{parsed.netloc}"
+    return configured_frontend
+
 
 
 @router.get(
