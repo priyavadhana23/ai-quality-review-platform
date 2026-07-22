@@ -4,27 +4,27 @@
   "rewrites": [
     {
       "source": "/auth/login",
-      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/auth/login"
+      "destination": "https://ai-quality-review-platform-v2-production.up.railway.app/auth/login"
     },
     {
       "source": "/auth/refresh",
-      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/auth/refresh"
+      "destination": "https://ai-quality-review-platform-v2-production.up.railway.app/auth/refresh"
     },
     {
       "source": "/auth/logout",
-      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/auth/logout"
+      "destination": "https://ai-quality-review-platform-v2-production.up.railway.app/auth/logout"
     },
     {
       "source": "/users/:path*",
-      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/users/:path*"
+      "destination": "https://ai-quality-review-platform-v2-production.up.railway.app/users/:path*"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/api/:path*"
+      "destination": "https://ai-quality-review-platform-v2-production.up.railway.app/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://ai-quality-review-platform-production-2424.up.railway.app/health"
+      "destination": "https://ai-quality-review-platform-v2-production.up.railway.app/health"
     },
     {
       "source": "/(.*)",
