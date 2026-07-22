@@ -27,10 +27,11 @@ max_model_tokens = 32000
 # (Gunicorn is already started with --forwarded-allow-ips '*')
 
 [github]
-# Deployment type must be "app" for a GitHub App installation.
-# GITHUB__APP_ID, GITHUB__PRIVATE_KEY, and GITHUB__WEBHOOK_SECRET
-# are injected via Railway environment variables at runtime.
-deployment_type = "app"
+# Deployment type is "user" when using a GitHub Personal Access Token (GITHUB__USER_TOKEN).
+# For GitHub App installations, set GITHUB__DEPLOYMENT_TYPE="app" alongside
+# GITHUB__APP_ID, GITHUB__PRIVATE_KEY, and GITHUB__WEBHOOK_SECRET env vars.
+deployment_type = "user"
+
 
 # The bot username shown in PR comments (GitHub App slug + "[bot]").
 # Set this to your actual GitHub App slug once you create the App.
