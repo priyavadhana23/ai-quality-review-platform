@@ -10,14 +10,12 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 [config]
-# Gemini via Google AI Studio — key injected at runtime via
-# GOOGLE_AI_STUDIO__GEMINI_API_KEY environment variable.
-#model = "gemini/gemini-3.5-flash"
-#fallback_models = ["gemini/gemini-3.1-flash-lite"]
-model = "gemini/gemini-2.5-flash"
+# Gemini via Google AI Studio — active models queried directly from Google API
+model = "gemini/gemini-flash-latest"
 fallback_models = [
-    "gemini/gemini-2.5-flash-lite"
+    "gemini/gemini-flash-lite-latest"
 ]
+
 
 # Structured JSON logging suits Railway's log aggregator.
 log_level = "INFO"
